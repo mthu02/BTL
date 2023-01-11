@@ -1,0 +1,344 @@
+---
+title: "Young Tobacco Smoking Analysis"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+geometry: margin=0.75in
+---
+
+# Import library
+
+```{r}
+setwd('C:/Users/ADMIN/Desktop/02AD/BTL')
+library(dplyr)
+library(mice)
+library(mlbench)
+library(caret)
+library(tidyr)
+library(logistf)
+library(tidyverse)
+library(finalfit)
+library(forcats)
+library(epiDisplay)
+library(gtsummary)
+theme_set(theme_bw())
+```
+
+# Data preparation and exploratory analysis
+
+```{r}
+set.seed(145)
+
+## Import Tobacco Dataset
+tbc <- read.csv("VIETNAM_National_07.csv")
+
+## Select some variables
+df <- tbc %>% dplyr::select('CR1','CR12','CR14','CR24','CR25','CR30',
+                            'CR39','CR40','CR41','CR42','CR43',
+                            'CR44','CR45','CR47','CR48','CR51','CR53',
+                            'VNR56','VNR57','VNR67')
+# Recode variables
+df$CR1 <- recode(df$CR1,"1"=1,"2"=0)
+df$CR12 <- recode(df$CR12, "1"=0,"2"=1,"3"=2,"4"=3,"5"=4)
+df$CR14 <- recode(df$CR14, "1"=1,"2"=0)
+df$CR24 <- recode(df$CR24,  "1"=0,"2"=1,"3"=2,"4"=3)
+df$CR25 <- recode(df$CR25,  "1"=0,"2"=1,"3"=2,"4"=3)
+df$CR30 <- recode(df$CR30, "1"=0,"2"=1,"3"=2,"4"=3,"5"=4)
+df$CR39 <- recode(df$CR39, "1"=2,"2"=1,"3"=0)
+df$CR40 <- recode(df$CR40, "1"=0,"2"=3,"3"=2,"4"=1)
+df$CR41 <- recode(df$CR41, "1"=0,"4"=1,"2"=3,"3"=2) 
+df$CR42 <- recode(df$CR42, "1"=1,"2"=0)
+df$CR43 <- recode(df$CR43, "1"=0,"4"=1,"2"=3,"3"=2) 
+df$CR44 <- recode(df$CR44, "3"=0,"1"=2,"2"=1)
+df$CR45 <- recode(df$CR45, "3"=0,"1"=2,"2"=1)
+df$CR47 <- recode(df$CR47, "1"=1,"2"=0)
+df$CR48 <- recode(df$CR48, "1"=1,"2"=0,"3"=2)
+df$CR53 <- recode(df$CR53,"1"=1,"2"=0)
+df$VNR57 <- recode(df$VNR57, "1"=1,"2"=0)
+df$VNR56 <- recode(df$VNR56, "3"=0,"1"=2,"2"=1)
+
+df$CR1=as.factor(df$CR1)
+df$CR53=as.factor(df$CR53)
+df$CR12=as.factor(df$CR12)
+df$CR14=as.factor(df$CR14)
+df$CR24=as.factor(df$CR24)
+df$CR25=as.factor(df$CR25)
+df$CR30=as.factor(df$CR30)
+df$CR39=as.factor(df$CR39)
+df$CR40=as.factor(df$CR40)
+df$CR41=as.factor(df$CR41)
+df$CR42=as.factor(df$CR42)
+df$CR43=as.factor(df$CR43)
+df$CR44=as.factor(df$CR44)
+df$CR45=as.factor(df$CR45)
+df$CR47=as.factor(df$CR47)
+df$CR48=as.factor(df$CR48)
+df$VNR57=as.factor(df$VNR57)
+df$VNR56=as.factor(df$VNR56)
+df$VNR67=as.factor(df$VNR67)
+```
+
+## Recode the data
+
+```{r}
+
+df <- df %>%
+  mutate(CR1.factor = factor(CR1) %>%
+           fct_recode(
+             "Non-smoking" = "0",
+             "Smoking" = "1") %>%
+           ff_label("Smoking Status"),
+         
+         CR12.factor = factor(CR12) %>%
+           fct_recode("None" = "0",
+                      "Both" = "1",
+                      "Father only" = "2",
+                      "Mother only" = "3",
+                      "I dont know" = "4") %>%
+           ff_label("Parents smoke"),
+         
+         CR14.factor = factor(CR14) %>%
+           fct_recode("Yes" = "1",
+                      "No" = "0") %>%
+           ff_label("Family discussion about the harmful effects of smoking"),
+         
+         CR24.factor = factor(CR24) %>%
+           fct_recode("Definitely not" = "0",
+                      "Probably not" = "1",
+                      "Probably yes" = "2",
+                      "Definitely yes" = "3") %>%
+           ff_label("Think cigarette smoking is harmful"),
+         
+         CR25.factor = factor(CR25) %>%
+           fct_recode("None of them" = "0",
+                      "Some of them" = "1",
+                      "Most of them" = "2",
+                      "All of them" = "3") %>%
+           ff_label("Friend smoke"),
+         
+         CR30.factor = factor(CR30) %>%
+           fct_recode("0"="0",
+                      "1 to 2" = "1",
+                      "3 to 4" = "2",
+                      "5 to 6" = "3",
+                      "7" = "4") %>%
+           ff_label("Days people smoked in home"),
+         
+         CR39.factor = factor(CR39) %>%
+           fct_recode("None"="0",
+                      "A few"="1",
+                      "A lot"="2") %>%
+           ff_label("Num of Anti-smoking media"),
+         
+         CR40.factor = factor(CR40) %>%
+           fct_recode("Never participate"="0",
+                      "Never"="1",
+                      "Sometimes"="2",
+                      "A lot" = "3") %>%
+           ff_label("Num of Anti-smoking events"),
+         
+         CR41.factor = factor(CR41) %>%
+           fct_recode("Never watch TV"="0",
+                      "Never"="1",
+                      "Sometimes"="2",
+                      "A lot"="3") %>%
+           ff_label("See actors smoking"),
+         
+         CR42.factor = factor(CR42) %>%
+           fct_recode("Yes"="1",
+                      "No"="0") %>%
+           ff_label("Have something with a cigarette brand logo"),
+         
+         CR43.factor = factor(CR43) %>%
+           fct_recode("Never watch TV"="0",
+                      "Never"="1",
+                      "Sometimes"="2",
+                      "A lot"="3") %>%
+           ff_label("See cigarette brand names on TV"),
+         
+         CR44.factor = factor(CR44) %>%
+           fct_recode("None"="0",
+                      "A few"="1",
+                      "A lot"="2") %>%
+           ff_label("See advertisements for cigarettes"),
+         
+         CR45.factor = factor(CR45) %>%
+           fct_recode("None"="0",
+                      "A few"="1",
+                      "A lot"="2") %>%
+           ff_label("See advertisements for cigarettes on News"),
+         
+         VNR56.factor = factor(VNR56) %>%
+           fct_recode("None"="0",
+                      "A few"="1",
+                      "A lot"="2") %>%
+           ff_label("See advertisements for cigarettes at points of sale"),
+         
+         VNR57.factor = factor(VNR57) %>%
+           fct_recode("Yes"="1",
+                      "No"="0") %>%
+           ff_label("Gone to a concert sponsored by a tobacco company"),
+         
+         CR47.factor = factor(CR47) %>%
+           fct_recode("Yes"="1",
+                      "No"="0") %>%
+           ff_label("a cigarette representative offered you a free cigarette"),
+         
+         CR48.factor = factor(CR48) %>%
+           fct_recode("Yes"="1",
+                      "No"="0",
+                      "Not sure"="2") %>%
+           ff_label("Taught about the dangers of smoking"),
+         
+         CR53.factor = factor(CR53) %>%
+           fct_recode("Male"="1",
+                      "Female"="0") %>%
+           ff_label("Gender"),
+         
+         VNR67.factor = factor(VNR67) %>%
+           ff_label("Grade"))
+```
+
+## Overview
+
+```{r}
+explanatory <- c('CR12','CR14','CR24','CR25','CR30',
+                 'CR39','CR40','CR41','CR42','CR43',
+                 'CR44','CR45','CR47','CR48','CR53',#'CR51',
+                 'VNR56','VNR57','VNR67')
+dependent <- 'CR1'
+df %>%
+  ff_glimpse(dependent, explanatory)
+```
+
+## Handling missing data
+
+### Identify missing values in each variable
+
+```{r}
+df %>%
+  missing_plot(dependent, explanatory)
+```
+
+### Identification of missing data
+
+```{r}
+df %>% 
+  missing_pairs(dependent, explanatory, position = "fill")
+```
+
+```{r}
+explanatory <- c('CR12.factor','CR14.factor','CR24.factor','CR25.factor','CR30.factor',
+                 'CR39.factor','CR40.factor','CR41.factor','CR42.factor','CR43.factor',
+                 'CR44.factor','CR45.factor','CR47.factor','CR48.factor','CR53.factor',#,'CR51.factor'
+                 'VNR56.factor','VNR57.factor','VNR67.factor')
+dependent <- 'CR1.factor'
+missing_mar <- df %>% 
+  missing_compare(dependent, explanatory)
+knitr::kable(missing_mar)
+```
+
+### Multiple imputation
+
+```{r}
+df %>% 
+  select(all_of(dependent), all_of(explanatory)) %>% 
+  missing_predictorMatrix(
+    drop_from_imputed = c("CR1")
+  ) -> predM
+
+data <- df %>% 
+  select(all_of(dependent), all_of(explanatory))
+
+imp <- mice(data,m = 10, predictorMatrix = predM) 
+dff <- complete(imp)                          
+```
+
+### Imputed data
+
+```{r}
+dff %>%
+  ff_glimpse(dependent, explanatory)
+```
+
+```{r}
+table1 <- dff %>% 
+  summary_factorlist(dependent, explanatory, p=TRUE, column = FALSE)
+knitr::kable(table1, row.names=FALSE)
+```
+
+## Plot the data
+
+```{r}
+p1 <- dff %>% 
+  ggplot(aes(x = CR53.factor, fill = CR1.factor)) + 
+  geom_bar() + 
+  theme(legend.position = "none")
+
+p2 <- dff %>% 
+  ggplot(aes(x = CR53.factor, fill = CR1.factor)) + 
+  geom_bar(position = "fill") + 
+  ylab("proportion")
+
+library(patchwork)
+p1 + p2
+```
+
+```{r}
+p1 <- dff %>% 
+  ggplot(aes(x = VNR67.factor, fill = CR1.factor)) + 
+  geom_bar(position = position_stack(reverse = TRUE)) +
+  facet_grid(CR53.factor ~ CR12.factor) + 
+  theme(legend.position = "none")
+
+p2 <- dff %>% 
+  ggplot(aes(x = VNR67.factor, fill = CR1.factor)) + 
+  geom_bar(position = position_fill(reverse = TRUE)) +
+  facet_grid(CR53.factor ~ CR12.factor)+ 
+  theme(legend.position = "bottom")
+
+p1 / p2
+```
+
+```{r}
+dff %>% 
+  select(one_of(explanatory)) %>% 
+  pivot_longer(-CR53.factor) %>% 
+  ggplot(aes(value, fill = CR53.factor)) + 
+  geom_bar(position = "fill") +
+  ylab("proportion") +
+  facet_wrap(~name, scale = "free", ncol = 2) +
+  coord_flip()
+
+
+```
+
+## Fitting logistic regression models with finalfit
+
+```{r}
+explanatory <- c('CR12.factor','CR14.factor','CR24.factor','CR25.factor','CR30.factor',
+                 'CR39.factor','CR40.factor','CR41.factor','CR42.factor','CR43.factor',
+                 'CR44.factor','CR45.factor','CR47.factor','CR48.factor','CR53.factor',
+                 'VNR56.factor','VNR57.factor','VNR67.factor')
+
+table_uni_multi <- dff %>% 
+  finalfit(dependent, explanatory, metric=TRUE) 
+table_uni_multi
+#knitr::kable(table_uni_multi, row.names=FALSE)
+#table_uni_multi %>%
+#  kbl(caption = "Fitting logistic regression models with finalfit") %>%
+#  kable_classic(full_width = F, html_font = "Cambria") 
+```
+
+```{r}
+explanatory <- c('CR12.factor','CR14.factor','CR24.factor','CR25.factor','CR30.factor',
+                 'CR39.factor','CR40.factor','CR41.factor','CR42.factor','CR43.factor',
+                 'CR44.factor','CR45.factor','CR47.factor','CR48.factor','CR53.factor',
+                 'VNR56.factor','VNR57.factor','VNR67.factor')
+
+table_uni_multi_2 <- dff %>% 
+  finalfit(dependent, explanatory, metric=TRUE) 
+table_uni_multi_2
+```
+
